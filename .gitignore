@@ -39,3 +39,4 @@ voice/
 # OS
 .DS_Store
 Thumbs.db
+profiles/*/.env
