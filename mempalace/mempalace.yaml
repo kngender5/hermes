@@ -1,0 +1,20 @@
+wing: hermes
+rooms:
+- name: general
+  description: General memories and notes
+  keywords: []
+- name: technical
+  description: Technical knowledge, commands, configurations
+  keywords: [python, bash, docker, wsl, linux, server]
+- name: projects
+  description: Project-specific memories
+  keywords: [hermes, github, skill, cron, agent]
+- name: infra
+  description: Infrastructure (Proxmox, OPNsense, security)
+  keywords: [proxmox, opnsense, firewall, vm, lxc, network]
+- name: academic
+  description: Academic work (EKOM, Fagskolen)
+  keywords: [ekom, fagskolen, aut23, canvas, exam, study]
+- name: creative
+  description: Creative work (3D print, media, hardware)
+  keywords: [3d, print, hardware, esp32, raspberry, ascii, voice]
