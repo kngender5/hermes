@@ -1,0 +1,20 @@
+model:
+  api_mode: chat_completions
+  base_url: http://127.0.0.1:18080/v1
+  context_length: 32768
+  default: Qwen3-14B-128K-Q3_K_M
+  provider: llama.cpp
+providers:
+  llama.cpp:
+    name: llama.cpp local
+    base_url: http://127.0.0.1:18080/v1
+    api_mode: chat_completions
+    default_model: Qwen3-14B-128K-Q3_K_M
+    context_length: 32768
+    key_env: LLAMA_CPP_API_KEY
+    rate_limit_delay: 0
+    request_timeout_seconds: 120
+onboarding:
+  seen:
+    busy_input_prompt: true
+    tool_progress_prompt: true

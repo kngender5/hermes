@@ -1,7 +1,6 @@
 # Auth & credentials
 auth.json
 auth.lock
-config.yaml
 config.yaml.bak.*
 pairing/
 
@@ -36,7 +35,23 @@ hooks/
 images/
 voice/
 
+# Environment files
+profiles/*/.env
+*.env
+
 # OS
 .DS_Store
 Thumbs.db
-profiles/*/.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
