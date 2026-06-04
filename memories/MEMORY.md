@@ -1,13 +1,24 @@
-User prefers direct and technical responses - skip basic explanations unless asked, prefer CLI solutions over GUI, show full commands (not pseudocode), use Norwegian keyboard layout considerations, metric units, and 24h time format.
+# MEMORY.md — Hermes Agent Memory
+
+**Primary memory: MemPalace** (`~/mempalace/`)
+- MCP tools: `mempalace_search`, `mempalace_kg_query`, `mempalace_add_drawer`, etc.
+- Wings: general, technical, projects, infra, academic, creative
+- Knowledge graph: temporal entity-relationship facts
+
+This file is a fallback/summary. Always query MemPalace first for detailed info.
+
+## Quick Reference
+
+- User: Robert Karlsen, automation engineering student, Kvaløysletta/Tromsø
+- School: Fagskolen i Nord (AUT23)
+- Email: kng.wizi@gmail.com
+- GitHub repo: https://github.com/kngender5/hermes (private)
+- ntfy topic: hermes-alerts
+
+## MemPalace Protocol
+1. ON WAKE-UP: Call `mempalace_status` to load palace overview
+2. BEFORE RESPONDING about any person, project, or past event: call `mempalace_kg_query` or `mempalace_search` FIRST
+3. AFTER EACH SESSION: call `mempalace_diary_write` to record what happened
+4. WHEN FACTS CHANGE: call `mempalace_kg_invalidate` on old fact, `mempalace_kg_add` for new one
 §
-2026-06-01: llama.cpp local model: Qwen3-14B-128K-Q3_K_M (~6.9GB) at ~/models/Qwen3-14B-128K-Q3_K_M/. Standard Qwen3-14B=40K ctx (below Hermes 64K min) — must use Unsloth 128K variant. RTX 4060 8GB: --n-gpu-layers 20 partial offload. ctx-size 65536, port 18080. hf download CLI: --local-dir only (not Python API flags). Profile config: ~/.hermes/profiles/local/config.yaml — context_length 65536, model default must match /v1/models ID exactly.
-§
-ntfy.sh topic: hermes-alerts. Helper: ~/bin/ntfy-alert.
-§
-2026-06-03: Created 3 Hermes profiles: infra, academic, creative — each with SOUL.md, config.yaml, AGENTS.md. Project index at ~/projects/PROJECTS.md. Consolidated 6 cron jobs → 3 (unified security-check.sh, countermeasures hourly, daily report 08:00, heartbeat 12/18). Created devops skills: proxmox-logging, opnsense-logging.
-§
-2026-06-03: Created devops skills: proxmox-logging (ProxmoxLogger Python class, JSONL logging, error handling patterns, CLI wrapper, task polling, retry with backoff). opnsense-logging (OPNsenseLogger Python class, IDS alert processing, firewall rule manager with validation/batch rollback, VPN event tracking, configctl wrapper).
-§
-Do NOT delete user scripts/notebooks without explicit instruction. Clarify target env (Colab vs WSL) before writing setup. HF bucket sync: hf sync ./local hf://buckets/kngxne/TRELLIS.2-bucket (upload) or hf sync hf://buckets/kngxne/TRELLIS.2-bucket ./local (download). Can stage files in tempstrg bucket too.
-§
-2026-06-04: Configured 3 MCP servers: filesystem (14 tools), github (26 tools), puppeteer (7 tools) via hermes mcp add. hermes mcp catalog/picker empty — known limitation, use manual add. server-playwright does NOT exist on npm — use server-puppeteer. Pre-install with npm install -g to avoid npx timeout on first connect.
+2026-06-05: MEMORY.md and USER.md updated to reference MemPalace as primary memory. Fallback files only.
