@@ -1,0 +1,17 @@
+User prefers direct and technical responses - skip basic explanations unless asked, prefer CLI solutions over GUI, show full commands (not pseudocode), use Norwegian keyboard layout considerations, metric units, and 24h time format.
+§
+2026-06-01: Study workbench: ~/projects/study-workbench/. EKOM case-based exam. KG 210 nodes. ekom_solver.py v3.0, ekom_case_workflow.py v1.0 (10 cases).
+§
+2026-06-01: Voice — TTS: edge-tts (PernilleNeural/FinnNeural). STT: Whisper NbAiLab/nb-whisper-medium CUDA. Toggle: /voiceresponse on|off|status. Voice response ON. Pipeline: text → edge-tts .ogg → ffmpeg .opus → Discord MEDIA. Scripts: ~/bin/{tts,voice-input,voice_transcribe.py}.
+§
+2026-06-01: llama.cpp local model: Qwen3-14B-128K-Q3_K_M (~6.9GB) at ~/models/Qwen3-14B-128K-Q3_K_M/. Standard Qwen3-14B=40K ctx (below Hermes 64K min) — must use Unsloth 128K variant. RTX 4060 8GB: --n-gpu-layers 20 partial offload. ctx-size 65536, port 18080. hf download CLI: --local-dir only (not Python API flags). Profile config: ~/.hermes/profiles/local/config.yaml — context_length 65536, model default must match /v1/models ID exactly.
+§
+hermes doctor venv false positive: "Venv entry point not found" + fix cmd is WRONG for pip --user installs. hermes at ~/.local/bin/ pointing to hermes_cli.main:main is correct. Warning is cosmetic, do NOT attempt the venv fix. Pipe output with "2>&1 | cat" to avoid TTY timeout in WSL.
+§
+2026-06-02: PC build handleliste shared via Discord. ~19.000,- total. User purchase-ready. Case+optical: FINN.no manually.
+
+§
+2026-06-02: CLI tools installed: zoxide, dust, procs, btm, aichat, sk, bat, eza, ntfy v2.23.0, ollama v0.30.0. fuz crate missing → skim. bat→batcat symlink.
+
+§
+ntfy.sh: topic "hermes-alerts". Test OK. Helper: ~/bin/ntfy-alert.

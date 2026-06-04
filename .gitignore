@@ -1,0 +1,41 @@
+# Auth & credentials
+auth.json
+auth.lock
+config.yaml
+config.yaml.bak.*
+pairing/
+
+# Runtime state
+gateway.lock
+gateway.pid
+gateway_state.json
+gateway_voice_mode.json
+state.db
+state.db-shm
+state.db-wal
+kanban.db
+kanban.db.init.lock
+processes.json
+models_dev_cache.json
+ollama_cloud_models_cache.json
+provider_models_cache.json
+channel_directory.json
+
+# Cache & temp
+cache/
+audio_cache/
+image_cache/
+pastes/
+logs/
+lsp/
+sandboxes/
+state-snapshots/
+node/
+hermes-agent/
+hooks/
+images/
+voice/
+
+# OS
+.DS_Store
+Thumbs.db

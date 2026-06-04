@@ -1,0 +1,360 @@
+#!/usr/bin/env python3
+"""
+Canvas LMS CLI tool for Fagskolen i Nord.
+Usage:
+    canvas courses          — list active courses
+    canvas assignments      — list all assignments across courses
+    canvas assignments <course_id> — assignments for one course
+    canvas files            — list downloadable files per course
+    canvas download         — download all course files to curriculum/
+    canvas syllabus         — export syllabus/assignment ledger to xlsx
+    canvas calendar         — upcoming due dates (next 14 days)
+    canvas grades           — show grades per course
+    canvas announce         — recent announcements
+"""
+
+import os
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+
+def load_env():
+    env_path = Path.home() / ".hermes" / ".env"
+    if env_path.exists():
+        for line in env_path.read_text().splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, _, v = line.partition("=")
+                os.environ.setdefault(k.strip(), v.strip())
+
+
+load_env()
+
+API_URL = os.environ.get("CANVAS_BASE_URL") or os.environ.get("CANVAS_API_URL")
+API_KEY = os.environ.get("CANVAS_API_KEY") or os.environ.get("CANVAS_API_TOKEN")
+
+if not API_URL or not API_KEY:
+    print("[-] Missing Canvas credentials. Check ~/.hermes/.env")
+    sys.exit(1)
+
+from canvasapi import Canvas
+
+canvas = Canvas(API_URL, API_KEY)
+
+BASE_DIR = Path.home() / "projects" / "study-workbench" / "curriculum"
+
+
+def fmt_date(iso):
+    if not iso:
+        return "—"
+    try:
+        dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+        return dt.strftime("%Y-%m-%d %H:%M")
+    except Exception:
+        return str(iso)
+
+
+def truncate(s, n=60):
+    s = str(s)
+    return s[: n - 3] + "…" if len(s) > n else s
+
+
+def cmd_courses():
+    courses = list(canvas.get_courses(enrollment_state="active"))
+    print(f"\n{'ID':>6}  {'Course':<55} {'Code'}")
+    print("─" * 90)
+    for c in sorted(courses, key=lambda x: x.name):
+        code = getattr(c, "course_code", "") or ""
+        print(f"{c.id:>6}  {truncate(c.name, 55):<55} {code}")
+    print(f"\n{len(courses)} active course(s)")
+
+
+def cmd_assignments(course_id=None):
+    if course_id:
+        courses = [canvas.get_course(int(course_id))]
+    else:
+        courses = list(canvas.get_courses(enrollment_state="active"))
+
+    rows = []
+    for course in courses:
+        course_name = getattr(course, "name", f"Course {course.id}")
+        try:
+            assigns = list(course.get_assignments())
+        except Exception:
+            assigns = []
+        for a in assigns:
+            rows.append(
+                {
+                    "course": course_name,
+                    "course_id": course.id,
+                    "id": a.id,
+                    "name": a.name,
+                    "due": fmt_date(getattr(a, "due_at", None)),
+                    "points": getattr(a, "points_possible", 0),
+                    "published": getattr(a, "published", None),
+                }
+            )
+
+    rows.sort(key=lambda r: r["due"] if r["due"] != "—" else "9999")
+
+    print(f"\n{'Due':<22} {'Pts':>4}  {'Course':<35} {'Assignment'}")
+    print("─" * 100)
+    for r in rows:
+        pub = " " if r["published"] else "🔒"
+        print(
+            f"{r['due']:<22} {r['points']:>4}  {truncate(r['course'], 35):<35} {pub} {r['name']}"
+        )
+    print(f"\n{len(rows)} assignment(s)")
+
+
+def cmd_files():
+    courses = list(canvas.get_courses(enrollment_state="active"))
+    for course in courses:
+        course_name = getattr(course, "name", f"Course {course.id}")
+        try:
+            files = list(course.get_files())
+        except Exception:
+            files = []
+        if not files:
+            continue
+        print(f"\n📁 {course_name} ({len(files)} files)")
+        for f in files:
+            size = getattr(f, "size", 0)
+            if size:
+                size_str = (
+                    f"{size / 1024:.0f} KB"
+                    if size < 1024 * 1024
+                    else f"{size / (1024 * 1024):.1f} MB"
+                )
+            else:
+                size_str = "?"
+            print(f"   {f.display_name:<50} {size_str:>10}  {f.updated_at}")
+
+
+def cmd_download():
+    courses = list(canvas.get_courses(enrollment_state="active"))
+    total = 0
+    for course in courses:
+        course_name = getattr(course, "name", f"Course {course.id}")
+        safe_name = course_name.replace("/", "_").replace(" ", "_")[:80]
+        dest = BASE_DIR / safe_name
+        dest.mkdir(parents=True, exist_ok=True)
+        try:
+            files = list(course.get_files())
+        except Exception as e:
+            print(f"  [-] {course_name}: {e}")
+            continue
+
+        for f in files:
+            fpath = dest / f.display_name
+            if fpath.exists():
+                continue
+            try:
+                f.download(str(fpath))
+                total += 1
+                print(f"  [↓] {f.display_name}")
+            except Exception as e:
+                print(f"  [-] {f.display_name}: {e}")
+
+        try:
+            pages = list(course.get_pages())
+            pages_dir = dest / "_pages"
+            pages_dir.mkdir(exist_ok=True)
+            for p in pages:
+                ppath = pages_dir / f"{p.title.replace('/', '_').replace(' ', '_')[:80]}.html"
+                if not ppath.exists():
+                    content = getattr(p, "body", "") or ""
+                    ppath.write_text(content, encoding="utf-8")
+                    total += 1
+        except Exception:
+            pass
+
+    print(f"\n[+] Downloaded {total} new file(s) to {BASE_DIR}")
+
+
+def cmd_syllabus():
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+
+    courses = list(canvas.get_courses(enrollment_state="active"))
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Assignments"
+
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill("solid", fgColor="2F5496")
+    headers = [
+        "Course",
+        "Course ID",
+        "Assignment",
+        "Due Date",
+        "Points",
+        "Published",
+        "URL",
+    ]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = Alignment(horizontal="center")
+
+    count = 0
+    for course in courses:
+        try:
+            assigns = list(course.get_assignments())
+        except Exception:
+            assigns = []
+        for a in assigns:
+            ws.append(
+                [
+                    getattr(course, "name", ""),
+                    course.id,
+                    a.name,
+                    fmt_date(getattr(a, "due_at", None)),
+                    getattr(a, "points_possible", 0),
+                    "Yes" if getattr(a, "published", False) else "No",
+                    getattr(a, "html_url", ""),
+                ]
+            )
+            count += 1
+
+    for col in ws.columns:
+        mx = max(len(str(c.value or "")) for c in col)
+        ws.column_dimensions[col[0].column_letter].width = min(mx + 2, 60)
+
+    out = BASE_DIR / "syllabus_master.xlsx"
+    wb.save(str(out))
+    print(f"[+] Syllabus exported: {out} ({count} assignments)")
+
+
+def cmd_calendar():
+    now = datetime.now(timezone.utc)
+    cutoff = now + timedelta(days=14)
+    courses = list(canvas.get_courses(enrollment_state="active"))
+
+    upcoming = []
+    for course in courses:
+        try:
+            assigns = list(course.get_assignments())
+        except Exception:
+            assigns = []
+        for a in assigns:
+            due = getattr(a, "due_at", None)
+            if not due:
+                continue
+            try:
+                dt = datetime.fromisoformat(due.replace("Z", "+00:00"))
+                if now <= dt <= cutoff:
+                    upcoming.append(
+                        {
+                            "due": dt,
+                            "course": getattr(course, "name", ""),
+                            "name": a.name,
+                            "points": getattr(a, "points_possible", 0),
+                        }
+                    )
+            except Exception:
+                pass
+
+    upcoming.sort(key=lambda x: x["due"])
+    print(
+        f"\n📅 Upcoming deadlines (next 14 days) — {len(upcoming)} item(s)\n"
+    )
+    print(
+        f"{'Due':<22} {'Pts':>4}  {'Course':<30} {'Assignment'}"
+    )
+    print("─" * 95)
+    for u in upcoming:
+        days_left = (u["due"] - now).days
+        tag = f"({days_left}d)" if days_left > 0 else "(TODAY)"
+        print(
+            f"{u['due'].strftime('%Y-%m-%d %H:%M')} {tag:<8} {u['points']:>4}  {truncate(u['course'], 30):<30} {u['name']}"
+        )
+
+
+def cmd_grades():
+    courses = list(canvas.get_courses(enrollment_state="active"))
+    print(f"\n{'Course':<50} {'Grade':>10} {'Score':>10}")
+    print("─" * 75)
+    for course in courses:
+        try:
+            enrollments = list(course.get_enrollments())
+            for e in enrollments:
+                grade = getattr(e, "grades", None)
+                if grade:
+                    current_grade = grade.get("current_score", "—")
+                    letter = grade.get("current_grade", "—")
+                    print(
+                        f"{truncate(getattr(course, 'name', ''), 50):<50} {str(letter):>10} {str(current_grade):>10}"
+                    )
+                    break
+        except Exception:
+            pass
+
+
+def cmd_announce():
+    courses = list(canvas.get_courses(enrollment_state="active"))
+    all_ann = []
+    for course in courses:
+        try:
+            anns = list(course.get_discussion_topics(only_announcements=True))
+            for a in anns:
+                all_ann.append(
+                    {
+                        "course": getattr(course, "name", ""),
+                        "title": a.title,
+                        "posted": fmt_date(getattr(a, "posted_at", None)),
+                        "author": getattr(
+                            getattr(a, "author", None), "display_name", "?"
+                        ),
+                        "url": getattr(a, "html_url", ""),
+                    }
+                )
+        except Exception:
+            pass
+
+    all_ann.sort(key=lambda x: x["posted"], reverse=True)
+    print(f"\n📢 Recent announcements — {len(all_ann)} total\n")
+    for a in all_ann[:20]:
+        print(f"  [{a['posted']}] {a['course']}")
+        print(f"    {a['title']} — {a['author']}")
+        print(f"    {a['url']}\n")
+
+
+COMMANDS = {
+    "courses": cmd_courses,
+    "assignments": cmd_assignments,
+    "files": cmd_files,
+    "download": cmd_download,
+    "syllabus": cmd_syllabus,
+    "calendar": cmd_calendar,
+    "grades": cmd_grades,
+    "announce": cmd_announce,
+}
+
+
+def main():
+    args = sys.argv[1:]
+    if not args or args[0] in ("-h", "--help", "help"):
+        print(__doc__)
+        print("Available commands:", ", ".join(COMMANDS))
+        sys.exit(0)
+
+    cmd = args[0]
+    if cmd not in COMMANDS:
+        print(f"Unknown command: {cmd}")
+        print("Available:", ", ".join(COMMANDS))
+        sys.exit(1)
+
+    import inspect
+
+    sig = inspect.signature(COMMANDS[cmd])
+    if len(sig.parameters) > 0:
+        COMMANDS[cmd](*args[1:])
+    else:
+        COMMANDS[cmd]()
+
+
+if __name__ == "__main__":
+    main()

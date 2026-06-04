@@ -1,0 +1,6 @@
+2026-05-25T12:26:39Z INSTALL docker-management official:builtin dangerous sha256:b3b0513a7dc104fa
+2026-05-25T12:27:21Z INSTALL adversarial-ux-test official:builtin safe sha256:e2b5234a7ea6857b
+2026-05-25T12:28:27Z INSTALL 3-statement-model official:builtin safe sha256:db57ce74eb95f401
+2026-05-31T05:56:50Z BLOCKED antigravity-cli clawhub:community dangerous 1_findings
+2026-05-31T05:59:26Z INSTALL antigravity-cli clawhub:community dangerous sha256:21cd2697871cd0fc
+2026-05-31T05:59:47Z INSTALL antigravity-cli clawhub:community dangerous sha256:21cd2697871cd0fc

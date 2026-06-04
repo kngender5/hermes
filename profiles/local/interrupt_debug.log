@@ -1,0 +1,12 @@
+09:44:18 interrupt fired: msg='hey', children=0, parent._interrupt=True
+09:44:18 ENTER: queued interrupt msg='hey', agent_running=True
+13:56:53 interrupt fired: msg='install obliteratus', children=0, parent._interrupt=True
+13:56:53 ENTER: queued interrupt msg='install obliteratus', agent_running=True
+00:14:07 interrupt fired: msg='hi', children=0, parent._interrupt=True
+00:14:07 ENTER: queued interrupt msg='hi', agent_running=True
+00:14:58 ENTER: queued interrupt msg='hi', agent_running=True
+00:14:58 interrupt fired: msg='hi', children=0, parent._interrupt=True
+00:24:22 interrupt fired: msg='hi', children=0, parent._interrupt=True
+00:24:22 ENTER: queued interrupt msg='hi', agent_running=True
+10:42:58 ENTER: queued interrupt msg='broad search, include forums sosial sites, online boards', agent_running=True
+10:42:58 interrupt fired: msg='broad search, include forums sosial sites, online boards', children=0, parent._interrupt=True

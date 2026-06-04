@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "installed": {
+    "docker-management": {
+      "source": "official",
+      "identifier": "official/devops/docker-management",
+      "trust_level": "builtin",
+      "scan_verdict": "dangerous",
+      "content_hash": "sha256:b3b0513a7dc104fa",
+      "install_path": "devops/docker-management",
+      "files": [
+        "SKILL.md"
+      ],
+      "metadata": {},
+      "installed_at": "2026-05-25T12:26:39.776904+00:00",
+      "updated_at": "2026-05-25T12:26:39.776911+00:00"
+    },
+    "adversarial-ux-test": {
+      "source": "official",
+      "identifier": "official/dogfood/adversarial-ux-test",
+      "trust_level": "builtin",
+      "scan_verdict": "safe",
+      "content_hash": "sha256:e2b5234a7ea6857b",
+      "install_path": "dogfood/adversarial-ux-test",
+      "files": [
+        "SKILL.md"
+      ],
+      "metadata": {},
+      "installed_at": "2026-05-25T12:27:21.037682+00:00",
+      "updated_at": "2026-05-25T12:27:21.037688+00:00"
+    },
+    "3-statement-model": {
+      "source": "official",
+      "identifier": "official/finance/3-statement-model",
+      "trust_level": "builtin",
+      "scan_verdict": "safe",
+      "content_hash": "sha256:db57ce74eb95f401",
+      "install_path": "finance/3-statement-model",
+      "files": [
+        "SKILL.md",
+        "references/sec-filings.md",
+        "references/formatting.md",
+        "references/formulas.md"
+      ],
+      "metadata": {},
+      "installed_at": "2026-05-25T12:28:27.836044+00:00",
+      "updated_at": "2026-05-25T12:28:27.836048+00:00"
+    },
+    "antigravity-cli": {
+      "source": "clawhub",
+      "identifier": "antigravity-cli",
+      "trust_level": "community",
+      "scan_verdict": "dangerous",
+      "content_hash": "sha256:21cd2697871cd0fc",
+      "install_path": "antigravity-cli",
+      "files": [
+        "references/artifacts.md",
+        "references/cli-usage.md",
+        "references/config-platform.md",
+        "references/overview-workflows.md",
+        "references/security-permissions.md",
+        "references/tui.md",
+        "SKILL.md",
+        "_meta.json"
+      ],
+      "metadata": {},
+      "installed_at": "2026-05-31T05:59:47.388579+00:00",
+      "updated_at": "2026-05-31T05:59:47.388583+00:00"
+    }
+  }
+}

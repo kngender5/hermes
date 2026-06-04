@@ -1,0 +1,45 @@
+#!/bin/bash
+# Voice input: record mic audio, transcribe with Whisper on CUDA
+# Usage: voice-input [-s seconds] [-l lang]
+#   -s  recording seconds (default 10)
+#   -l  language: no, nb, en, auto (default no)
+
+DURATION=10
+LANG="no"
+OUT="/tmp/voice_input_$(date +%s).wav"
+TRANSCRIBE="$HOME/bin/voice_transcribe.py"
+VENV="/tmp/whisper-env/bin/python"
+
+while getopts "s:l:" opt; do
+    case $opt in
+        s) DURATION=$OPTARG ;;
+        l) LANG=$OPTARG ;;
+    esac
+done
+
+echo "* Recording ${DURATION}s of audio..."
+
+if command -v arecord &>/dev/null && arecord -l 2>/dev/null | grep -q "card"; then
+    arecord -D default -f S16_LE -r 16000 -c 1 -d "$DURATION" "$OUT" 2>/dev/null
+elif command -v ffmpeg &>/dev/null; then
+    ffmpeg -y -f pulse -i default -t "$DURATION" -ac 1 -ar 16000 -sample_fmt s16 "$OUT" 2>/dev/null
+else
+    echo "ERROR: No audio capture tool found. Install alsa-utils or ffmpeg."
+    rm -f "$OUT"
+    exit 1
+fi
+
+if [ ! -s "$OUT" ]; then
+    echo "ERROR: Recording failed or empty output."
+    rm -f "$OUT"
+    exit 1
+fi
+
+echo "* Transcribing ($LANG)..."
+TEXT=$(HF_HUB_DISABLE_SYMLINKS_WARNING=1 "$VENV" "$TRANSCRIBE" "$OUT" -l "$LANG" 2>/dev/null)
+
+echo ""
+echo "$TEXT"
+echo ""
+
+rm -f "$OUT"

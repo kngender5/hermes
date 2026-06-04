@@ -1,0 +1,9 @@
+{
+  "last_report_path": "/home/kng/data/hermes/logs/curator/20260531-115724",
+  "last_run_at": "2026-05-31T11:57:24.923327+00:00",
+  "last_run_duration_seconds": 648.864465,
+  "last_run_summary": "auto: no changes; llm: Everything is in order. Let me now write the final summary.\n\n---\n\n## Human Summary\n\nI processed all 9 agent-created skills and identified 2 consolidation clusters. Here's what was done:\n\n### Cluster 1: Norwegian LMS / Browser SSO → `browser…\narchived 2 skill(s):\n  • norwegian-lms-integration → browser-sso-automation\n  • wsl2-windows-bridge → voice-input-windows\nfull report: hermes curator status\nkeep an umbrella stable: hermes curator pin browser-sso-automation",
+  "last_run_summary_shown_at": "2026-05-24T11:55:44.807627+00:00",
+  "paused": false,
+  "run_count": 2
+}

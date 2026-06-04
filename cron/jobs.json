@@ -1,0 +1,171 @@
+{
+  "jobs": [
+    {
+      "id": "33d95e348628",
+      "name": "security-check-wsl-windows",
+      "prompt": "Run unified infrastructure security check. Execute: ~/bin/security-check.sh\nThis single script replaces the old 5-minute security-check.\nIf output contains any ALERT lines (not just \"Scan complete\"), deliver those alerts.\nOtherwise stay silent \u2014 no news is good news.",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "*/5 * * * *",
+        "display": "*/5 * * * *"
+      },
+      "schedule_display": "*/5 * * * *",
+      "repeat": {
+        "times": null,
+        "completed": 122
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-06-02T23:01:36.693143+02:00",
+      "next_run_at": "2026-06-04T20:45:00+02:00",
+      "last_run_at": "2026-06-04T20:43:10.802640+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "local",
+      "origin": null,
+      "enabled_toolsets": [
+        "terminal"
+      ],
+      "workdir": null,
+      "profile": null
+    },
+    {
+      "id": "64bb8678b6c9",
+      "name": "countermeasures-auto",
+      "prompt": "Run automated countermeasures analysis. IMPORTANT: First do a dry-run to preview: ~/bin/countermeasures dry-run\nOnly if dry-run reports actual threats (not localhost/WSL-interop false positives), execute: ~/bin/countermeasures auto\nLog results to ~/data/security-monitor/countermeasures.jsonl regardless.\nStay silent if no real threats detected.",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 * * * *",
+        "display": "0 * * * *"
+      },
+      "schedule_display": "0 * * * *",
+      "repeat": {
+        "times": null,
+        "completed": 12
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-06-02T23:02:20.378738+02:00",
+      "next_run_at": "2026-06-04T21:00:00+02:00",
+      "last_run_at": "2026-06-03T12:04:32.510534+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "local",
+      "origin": null,
+      "enabled_toolsets": [
+        "terminal"
+      ],
+      "workdir": null,
+      "profile": null
+    },
+    {
+      "id": "f1c58b32cbad",
+      "name": "daily-infra-report",
+      "prompt": "Generate a comprehensive daily infrastructure report.\n\n1. Run security summary:\n   ~/bin/security-logging report --hours 24 2>/dev/null || echo \"No security logs\"\n\n2. Check system health (if script exists):\n   ~/bin/system-health-check 2>/dev/null || echo \"No health check script\"\n\n3. Combine into a concise daily summary covering:\n   - Security events count (last 24h)\n   - Any critical alerts\n   - System health status (disk/memory/CPU)\n   - Proxmox/OPNsense status if accessible\n\nKeep it under 500 words. Push to ntfy only if issues found.\nFormat: structured markdown with emoji indicators.",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 8 * * *",
+        "display": "0 8 * * *"
+      },
+      "schedule_display": "0 8 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 0
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-06-03T08:34:20.511908+02:00",
+      "next_run_at": "2026-06-05T08:00:00+02:00",
+      "last_run_at": null,
+      "last_status": null,
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "discord",
+        "chat_id": "1475695632126578731",
+        "chat_name": "Kngxne / #general",
+        "thread_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "profile": null
+    },
+    {
+      "id": "23ce17a5bc1b",
+      "name": "hermes-heartbeat",
+      "prompt": "Quick health check. Run:\n1. disk usage: df -h / && df -h /mnt/c 2>/dev/null\n2. memory: free -h\n3. uptime: uptime\n4. cron status: check that job 33d95e348628 is enabled\n\nReturn a one-line status: \"\ud83d\udfe2 Hermes OK \u2014 disk XX%, mem XX%, up Xd Xh\" or \"\ud83d\udfe1 Hermes WARN \u2014 [issue]\"\nOnly alert if something is actually wrong (disk >85%, mem >90%).",
+      "skills": [],
+      "skill": null,
+      "model": null,
+      "provider": null,
+      "base_url": null,
+      "script": null,
+      "no_agent": false,
+      "context_from": null,
+      "schedule": {
+        "kind": "cron",
+        "expr": "0 12,18 * * *",
+        "display": "0 12,18 * * *"
+      },
+      "schedule_display": "0 12,18 * * *",
+      "repeat": {
+        "times": null,
+        "completed": 1
+      },
+      "enabled": true,
+      "state": "scheduled",
+      "paused_at": null,
+      "paused_reason": null,
+      "created_at": "2026-06-03T08:34:21.519389+02:00",
+      "next_run_at": "2026-06-05T12:00:00+02:00",
+      "last_run_at": "2026-06-03T12:04:40.134095+02:00",
+      "last_status": "ok",
+      "last_error": null,
+      "last_delivery_error": null,
+      "deliver": "origin",
+      "origin": {
+        "platform": "discord",
+        "chat_id": "1475695632126578731",
+        "chat_name": "Kngxne / #general",
+        "thread_id": null
+      },
+      "enabled_toolsets": null,
+      "workdir": null,
+      "profile": null
+    }
+  ],
+  "updated_at": "2026-06-04T20:43:10.803994+02:00"
+}
