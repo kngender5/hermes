@@ -48,6 +48,31 @@ TIMEAPI_BASE      = "https://timeapi.io/api/timezone/coordinate"
 # Seconds to sleep between Nominatim requests (ToS requirement)
 NOMINATIM_RATE_LIMIT = 1.0
 
+class TokenBucketRateLimiter:
+    """A simple token bucket rate limiter to avoid unnecessary sleep."""
+    def __init__(self, rate, capacity):
+        self.rate = rate
+        self.capacity = capacity
+        self.tokens = capacity
+        self.last_update = time.monotonic()
+
+    def wait(self, tokens=1.0):
+        while True:
+            now = time.monotonic()
+            elapsed = now - self.last_update
+            self.tokens = min(self.capacity, self.tokens + elapsed * self.rate)
+            self.last_update = now
+
+            if self.tokens >= tokens:
+                self.tokens -= tokens
+                return
+
+            # Sleep until enough tokens might have accumulated
+            sleep_time = (tokens - self.tokens) / self.rate
+            time.sleep(sleep_time)
+
+nominatim_limiter = TokenBucketRateLimiter(rate=1.0/NOMINATIM_RATE_LIMIT, capacity=1.0)
+
 # Maximum retries for HTTP errors
 MAX_RETRIES = 3
 RETRY_DELAY = 2.0  # seconds
@@ -322,7 +347,7 @@ def nominatim_search(query, limit=5):
         "limit":          limit,
         "addressdetails": 1,
     }
-    time.sleep(NOMINATIM_RATE_LIMIT)
+    nominatim_limiter.wait()
     return http_get(NOMINATIM_SEARCH, params=params)
 
 
@@ -334,7 +359,7 @@ def nominatim_reverse(lat, lon):
         "format":         "json",
         "addressdetails": 1,
     }
-    time.sleep(NOMINATIM_RATE_LIMIT)
+    nominatim_limiter.wait()
     return http_get(NOMINATIM_REVERSE, params=params)
 
 
