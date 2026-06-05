@@ -431,3 +431,28 @@ def test_main_cli_args(tmp_path):
         runpy.run_path(str(Path(clean.__file__)), run_name='__main__')
         assert "Removed 1 unreferenced files:" in mock_stdout.getvalue()
         assert "[trash]/junk.txt" in mock_stdout.getvalue()
+
+def test_get_slides_in_sldidlst_xml_error(tmp_path):
+    from xml.parsers.expat import ExpatError
+    create_mock_pptx(tmp_path)
+
+    with patch('defusedxml.minidom.parse', side_effect=ExpatError("mismatched tag")):
+        with pytest.raises(ExpatError, match="mismatched tag"):
+            clean.get_slides_in_sldidlst(tmp_path)
+
+def test_remove_orphaned_slides_unlink_error(tmp_path):
+    ppt_dir = create_mock_pptx(tmp_path)
+    slides_dir = ppt_dir / "slides"
+    (slides_dir / "slide3.xml").touch() # Orphaned
+
+    with patch('pathlib.Path.unlink', side_effect=PermissionError("Permission denied")):
+        with pytest.raises(PermissionError, match="Permission denied"):
+            clean.remove_orphaned_slides(tmp_path)
+
+def test_remove_trash_directory_rmdir_error(tmp_path):
+    trash_dir = tmp_path / "[trash]"
+    trash_dir.mkdir()
+
+    with patch('pathlib.Path.rmdir', side_effect=OSError("Directory not empty")):
+        with pytest.raises(OSError, match="Directory not empty"):
+            clean.remove_trash_directory(tmp_path)
