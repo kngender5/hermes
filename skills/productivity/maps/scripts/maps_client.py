@@ -16,6 +16,7 @@ Commands:
 """
 
 import argparse
+import asyncio
 import json
 import math
 import os
@@ -47,6 +48,7 @@ TIMEAPI_BASE      = "https://timeapi.io/api/timezone/coordinate"
 
 # Seconds to sleep between Nominatim requests (ToS requirement)
 NOMINATIM_RATE_LIMIT = 1.0
+_last_nominatim_request = 0.0
 
 # Maximum retries for HTTP errors
 MAX_RETRIES = 3
@@ -298,6 +300,15 @@ def overpass_query(query):
 # Geo math
 # ---------------------------------------------------------------------------
 
+async def _wait_for_nominatim_rate_limit():
+    global _last_nominatim_request
+    now = time.time()
+    elapsed = now - _last_nominatim_request
+    if elapsed < NOMINATIM_RATE_LIMIT:
+        await asyncio.sleep(NOMINATIM_RATE_LIMIT - elapsed)
+    _last_nominatim_request = time.time()
+
+
 def haversine_m(lat1, lon1, lat2, lon2):
     """Return distance in metres between two lat/lon points (Haversine)."""
     R = 6_371_000  # Earth mean radius in metres
@@ -314,7 +325,7 @@ def haversine_m(lat1, lon1, lat2, lon2):
 # Nominatim helpers
 # ---------------------------------------------------------------------------
 
-def nominatim_search(query, limit=5):
+async def nominatim_search(query, limit=5):
     """Geocode a free-text query. Returns list of result dicts."""
     params = {
         "q":              query,
@@ -322,11 +333,11 @@ def nominatim_search(query, limit=5):
         "limit":          limit,
         "addressdetails": 1,
     }
-    time.sleep(NOMINATIM_RATE_LIMIT)
-    return http_get(NOMINATIM_SEARCH, params=params)
+    await _wait_for_nominatim_rate_limit()
+    return await asyncio.get_event_loop().run_in_executor(None, lambda: http_get(NOMINATIM_SEARCH, params=params))
 
 
-def nominatim_reverse(lat, lon):
+async def nominatim_reverse(lat, lon):
     """Reverse geocode lat/lon. Returns a single result dict."""
     params = {
         "lat":            lat,
@@ -334,8 +345,8 @@ def nominatim_reverse(lat, lon):
         "format":         "json",
         "addressdetails": 1,
     }
-    time.sleep(NOMINATIM_RATE_LIMIT)
-    return http_get(NOMINATIM_REVERSE, params=params)
+    await _wait_for_nominatim_rate_limit()
+    return await asyncio.get_event_loop().run_in_executor(None, lambda: http_get(NOMINATIM_REVERSE, params=params))
 
 
 def geocode_single(query):
@@ -343,7 +354,7 @@ def geocode_single(query):
     Geocode a query and return (lat, lon, display_name).
     Exits with error if nothing found.
     """
-    results = nominatim_search(query, limit=1)
+    results = asyncio.run(nominatim_search(query, limit=1))
     if not results:
         error_exit(f"Could not geocode: {query}")
     r = results[0]
@@ -502,7 +513,7 @@ def parse_overpass_elements(elements, ref_lat=None, ref_lon=None):
 def cmd_search(args):
     """Geocode a place name and return top results."""
     query = " ".join(args.query)
-    raw   = nominatim_search(query, limit=5)
+    raw   = asyncio.run(nominatim_search(query, limit=5))
 
     if not raw:
         print_json({
@@ -559,7 +570,7 @@ def cmd_reverse(args):
     if not (-180 <= lon <= 180):
         error_exit("Longitude must be between -180 and 180.")
 
-    data = nominatim_reverse(lat, lon)
+    data = asyncio.run(nominatim_reverse(lat, lon))
 
     if "error" in data:
         error_exit(f"Reverse geocode failed: {data['error']}")
@@ -1033,7 +1044,7 @@ def cmd_bbox(args):
 def cmd_area(args):
     """Get bounding box and area info for a named place."""
     query = " ".join(args.place)
-    raw = nominatim_search(query, limit=1)
+    raw = asyncio.run(nominatim_search(query, limit=1))
 
     if not raw:
         error_exit(f"Could not find place: {query}")
