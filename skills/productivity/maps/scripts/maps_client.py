@@ -19,6 +19,7 @@ import argparse
 import json
 import math
 import os
+import socket
 import sys
 import time
 import urllib.error
@@ -215,6 +216,9 @@ def http_get(url, params=None, retries=MAX_RETRIES, silent=False):
         except urllib.error.URLError as exc:
             last_error = f"URL error: {exc.reason}"
             time.sleep(RETRY_DELAY * attempt)
+        except (socket.timeout, ConnectionError) as exc:
+            last_error = f"Connection error: {exc}"
+            time.sleep(RETRY_DELAY * attempt)
         except json.JSONDecodeError as exc:
             last_error = f"JSON parse error: {exc}"
             time.sleep(RETRY_DELAY * attempt)
@@ -250,6 +254,9 @@ def http_get_text(url, params=None, retries=MAX_RETRIES, silent=False):
                 error_exit(last_error)
         except urllib.error.URLError as exc:
             last_error = f"URL error: {exc.reason}"
+            time.sleep(RETRY_DELAY * attempt)
+        except (socket.timeout, ConnectionError) as exc:
+            last_error = f"Connection error: {exc}"
             time.sleep(RETRY_DELAY * attempt)
 
     msg = f"Request failed after {retries} attempts. Last error: {last_error}"
@@ -287,6 +294,9 @@ def http_post(url, data_str, retries=MAX_RETRIES):
                 error_exit(last_error)
         except urllib.error.URLError as exc:
             last_error = f"URL error: {exc.reason}"
+            time.sleep(RETRY_DELAY * attempt)
+        except (socket.timeout, ConnectionError) as exc:
+            last_error = f"Connection error: {exc}"
             time.sleep(RETRY_DELAY * attempt)
         except json.JSONDecodeError as exc:
             last_error = f"JSON parse error: {exc}"
