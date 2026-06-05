@@ -43,16 +43,11 @@ def merge_runs(input_dir: str) -> tuple[int, str]:
 
 def _find_elements(root, tag: str) -> list:
     results = []
-
-    def traverse(node):
-        if node.nodeType == node.ELEMENT_NODE:
-            name = node.localName or node.tagName
-            if name == tag or name.endswith(f":{tag}"):
-                results.append(node)
-            for child in node.childNodes:
-                traverse(child)
-
-    traverse(root)
+    suffix = f":{tag}"
+    for node in root.getElementsByTagName("*"):
+        name = node.localName or node.tagName
+        if name == tag or name.endswith(suffix):
+            results.append(node)
     return results
 
 
