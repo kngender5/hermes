@@ -128,8 +128,10 @@ def handle(conn, mgr):
     except Exception as e:
         log.error(f"Error: {e}")
         resp = json.dumps({"status": "error", "message": str(e)}).encode()
-        try: conn.sendall(f"HTTP/1.0 500 Error\r\nContent-Length: {len(resp)}\r\n\r\n".encode() + resp)
-        except: pass
+        try:
+            conn.sendall(f"HTTP/1.0 500 Error\r\nContent-Length: {len(resp)}\r\n\r\n".encode() + resp)
+        except OSError as send_err:
+            log.error(f"Failed to send error response: {send_err}")
 
 
 def main():
