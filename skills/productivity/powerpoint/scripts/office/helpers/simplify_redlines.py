@@ -111,15 +111,16 @@ def _merge_tracked_content(target, source):
 def _find_elements(root, tag: str) -> list:
     results = []
 
-    def traverse(node):
-        if node.nodeType == node.ELEMENT_NODE:
-            name = node.localName or node.tagName
-            if name == tag or name.endswith(f":{tag}"):
-                results.append(node)
-            for child in node.childNodes:
-                traverse(child)
+    if root.nodeType == root.ELEMENT_NODE:
+        name = root.localName or root.tagName
+        if name == tag or name.endswith(f":{tag}"):
+            results.append(root)
 
-    traverse(root)
+    for node in root.getElementsByTagName("*"):
+        name = node.localName or node.tagName
+        if name == tag or name.endswith(f":{tag}"):
+            results.append(node)
+
     return results
 
 
