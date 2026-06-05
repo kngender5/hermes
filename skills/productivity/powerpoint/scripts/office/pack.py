@@ -17,9 +17,11 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-import defusedxml.minidom
+import lxml.etree
 
 from validators import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValidator
+
+_parsed_xml_cache = {}
 
 def pack(
     input_directory: str,
@@ -107,22 +109,25 @@ def _run_validation(
 
 def _condense_xml(xml_file: Path) -> None:
     try:
-        with open(xml_file, encoding="utf-8") as f:
-            dom = defusedxml.minidom.parse(f)
+        file_path_str = str(xml_file)
+        if file_path_str in _parsed_xml_cache:
+            tree = _parsed_xml_cache[file_path_str]
+        else:
+            parser = lxml.etree.XMLParser(remove_blank_text=True, remove_comments=True)
+            tree = lxml.etree.parse(file_path_str, parser=parser)
+            _parsed_xml_cache[file_path_str] = tree
 
-        for element in dom.getElementsByTagName("*"):
-            if element.tagName.endswith(":t"):
+        for element in tree.iter():
+            if isinstance(element.tag, str) and (element.tag.endswith("}t") or element.tag.endswith(":t")):
                 continue
 
-            for child in list(element.childNodes):
-                if (
-                    child.nodeType == child.TEXT_NODE
-                    and child.nodeValue
-                    and child.nodeValue.strip() == ""
-                ) or child.nodeType == child.COMMENT_NODE:
-                    element.removeChild(child)
+            if element.text and not element.text.strip():
+                element.text = None
+            if element.tail and not element.tail.strip():
+                element.tail = None
 
-        xml_file.write_bytes(dom.toxml(encoding="UTF-8"))
+        condensed = lxml.etree.tostring(tree, encoding="UTF-8", xml_declaration=True)
+        xml_file.write_bytes(condensed)
     except Exception as e:
         print(f"ERROR: Failed to parse {xml_file.name}: {e}", file=sys.stderr)
         raise
