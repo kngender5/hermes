@@ -1,0 +1,246 @@
+---
+- name: Provision OPNsense for transit VLAN routing
+  hosts: localhost
+  gather_facts: false
+  vars:
+    opnsense_auth_header: "Basic {{ ('%s:%s' | format(opnsense_api_key, opnsense_api_secret)) | b64encode }}"
+  tasks:
+    - name: Validate OPNsense API credentials are present
+      ansible.builtin.assert:
+        that:
+          - opnsense_api_key | length > 0
+          - opnsense_api_secret | length > 0
+        fail_msg: "Set OPNSENSE_API_KEY and OPNSENSE_API_SECRET environment variables."
+
+    - name: Read existing VLANs
+      ansible.builtin.uri:
+        url: "{{ opnsense_base_url }}/api/interfaces/vlan/getItem/{}"
+        method: GET
+        validate_certs: "{{ opnsense_verify_tls }}"
+        headers:
+          Authorization: "{{ opnsense_auth_header }}"
+      register: opnsense_vlan_get
+
+    - name: Create required VLANs
+      ansible.builtin.uri:
+        url: "{{ opnsense_base_url }}/api/interfaces/vlan/addItem/{}"
+        method: POST
+        validate_certs: "{{ opnsense_verify_tls }}"
+        headers:
+          Authorization: "{{ opnsense_auth_header }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          vlan:
+            if: "{{ item.if_name }}"
+            tag: "{{ item.tag }}"
+            descr: "{{ item.descr }}"
+            pcp: ""
+            mode: normal
+      loop: "{{ opnsense_vlans }}"
+      when: (opnsense_vlan_get.content | default('')) is not search('"tag":"' ~ (item.tag | string) ~ '"')
+
+    - name: Read existing static routes
+      ansible.builtin.uri:
+        url: "{{ opnsense_base_url }}/api/routes/route/getRoute/{}"
+        method: GET
+        validate_certs: "{{ opnsense_verify_tls }}"
+        headers:
+          Authorization: "{{ opnsense_auth_header }}"
+      register: opnsense_route_get
+
+    - name: Configure static routes to OpenWrt
+      ansible.builtin.uri:
+        url: "{{ opnsense_base_url }}/api/routes/route/addRoute"
+        method: POST
+        validate_certs: "{{ opnsense_verify_tls }}"
+        headers:
+          Authorization: "{{ opnsense_auth_header }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          route:
+            network: "{{ item.network }}"
+            gateway: "{{ item.gateway }}"
+            descr: "{{ item.descr }}"
+      loop: "{{ opnsense_static_routes }}"
+      when: (opnsense_route_get.content | default('')) is not search(item.network)
+
+    - name: Read existing outbound NAT rules
+      ansible.builtin.uri:
+        url: "{{ opnsense_base_url }}/api/firewall/source_nat/getRule/{}"
+        method: GET
+        validate_certs: "{{ opnsense_verify_tls }}"
+        headers:
+          Authorization: "{{ opnsense_auth_header }}"
+      register: opnsense_nat_get
+
+    - name: Configure outbound NAT for routed VLANs
+      ansible.builtin.uri:
+        url: "{{ opnsense_base_url }}/api/firewall/source_nat/addRule/{}"
+        method: POST
+        validate_certs: "{{ opnsense_verify_tls }}"
+        headers:
+          Authorization: "{{ opnsense_auth_header }}"
+          Content-Type: application/json
+        body_format: json
+        body:
+          rule:
+            interface: "{{ item.interface }}"
+            ipprotocol: inet
+            protocol: any
+            source_net: "{{ item.source }}"
+            destination_net: any
+            target: interface
+            descr: "{{ item.descr }}"
+      loop: "{{ opnsense_outbound_nat_rules }}"
+      when: (opnsense_nat_get.content | default('')) is not search(item.source)
+
+    - name: Apply OPNsense route config
+      ansible.builtin.uri:
+        url: "{{ opnsense_base_url }}/api/routes/route/reconfigure"
+        method: POST
+        validate_certs: "{{ opnsense_verify_tls }}"
+        headers:
+          Authorization: "{{ opnsense_auth_header }}"
+
+    - name: Apply OPNsense firewall config
+      ansible.builtin.uri:
+        url: "{{ opnsense_base_url }}/api/firewall/filter/apply"
+        method: POST
+        validate_certs: "{{ opnsense_verify_tls }}"
+        headers:
+          Authorization: "{{ opnsense_auth_header }}"
+
+- name: Provision Proxmox VLAN-aware bridge and CrowdSec LAPI
+  hosts: proxmox
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Ensure bridge configuration exists in /etc/network/interfaces
+      ansible.builtin.blockinfile:
+        path: /etc/network/interfaces
+        marker: "# {mark} ANSIBLE MANAGED HOMELAB BRIDGE"
+        block: |
+          auto {{ proxmox_bridge_name }}
+          iface {{ proxmox_bridge_name }} inet manual
+              bridge-ports {{ proxmox_bridge_iface }}
+              bridge-stp off
+              bridge-fd 0
+              bridge-vlan-aware yes
+              bridge-vids {{ proxmox_bridge_vids }}
+
+    - name: Reload networking
+      ansible.builtin.command: ifreload -a
+      changed_when: false
+      failed_when: false
+
+    - name: Ensure required host packages are present
+      ansible.builtin.apt:
+        update_cache: true
+        name:
+          - jq
+          - curl
+        state: present
+
+    - name: Ensure CrowdSec template exists
+      ansible.builtin.shell: |
+        set -euo pipefail
+        if ! pveam list local | awk '{print $2}' | grep -qx 'debian-12-standard_12.7-1_amd64.tar.zst'; then
+          pveam update
+          pveam download local debian-12-standard_12.7-1_amd64.tar.zst
+        fi
+      args:
+        executable: /bin/bash
+
+    - name: Create CrowdSec LAPI container when missing
+      ansible.builtin.shell: |
+        set -euo pipefail
+        if ! pct config {{ crowdsec_ctid }} >/dev/null 2>&1; then
+          pct create {{ crowdsec_ctid }} {{ crowdsec_template }} \
+            --hostname {{ crowdsec_hostname }} \
+            --cores {{ crowdsec_cores }} \
+            --memory {{ crowdsec_memory }} \
+            --rootfs {{ crowdsec_rootfs }} \
+            --net0 {{ crowdsec_net_if }} \
+            --features nesting=1,keyctl=1 \
+            --unprivileged 1 \
+            --onboot 1
+        fi
+      args:
+        executable: /bin/bash
+
+    - name: Ensure CrowdSec container is started
+      ansible.builtin.command: pct start {{ crowdsec_ctid }}
+      failed_when: false
+      changed_when: false
+
+    - name: Install CrowdSec inside container
+      ansible.builtin.shell: |
+        set -euo pipefail
+        pct exec {{ crowdsec_ctid }} -- bash -lc "
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update
+          apt-get install -y curl gnupg lsb-release
+          if [ ! -f /etc/apt/sources.list.d/crowdsec.list ]; then
+            curl -fsSL https://packagecloud.io/crowdsec/crowdsec/gpgkey | gpg --dearmor > /usr/share/keyrings/crowdsec-archive-keyring.gpg
+            echo 'deb [signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/debian/ bookworm main' > /etc/apt/sources.list.d/crowdsec.list
+          fi
+          apt-get update
+          apt-get install -y crowdsec
+          systemctl enable --now crowdsec
+        "
+      args:
+        executable: /bin/bash
+
+    - name: Read existing bouncers
+      ansible.builtin.shell: |
+        pct exec {{ crowdsec_ctid }} -- cscli bouncers list -o json
+      args:
+        executable: /bin/bash
+      register: bouncer_list
+      changed_when: false
+
+    - name: Generate OpenWrt bouncer API key
+      ansible.builtin.shell: |
+        set -euo pipefail
+        pct exec {{ crowdsec_ctid }} -- cscli bouncers add {{ crowdsec_bouncer_name }} -o raw
+      args:
+        executable: /bin/bash
+      register: bouncer_key
+      when: bouncer_list.stdout is not search(crowdsec_bouncer_name)
+
+    - name: Persist bouncer key on Proxmox host
+      ansible.builtin.copy:
+        dest: "{{ crowdsec_bouncer_key_path }}"
+        content: "{{ bouncer_key.stdout | trim }}\n"
+        owner: root
+        group: www-data
+        mode: '0640'
+      when: bouncer_key is changed
+
+- name: Provision Prometheus scrape target
+  hosts: prometheus
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Install Prometheus package
+      ansible.builtin.apt:
+        update_cache: true
+        name: prometheus
+        state: present
+
+    - name: Deploy Prometheus scrape configuration
+      ansible.builtin.template:
+        src: templates/prometheus.yml.j2
+        dest: "{{ prometheus_config_path }}"
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Restart Prometheus
+
+  handlers:
+    - name: Restart Prometheus
+      ansible.builtin.service:
+        name: prometheus
+        state: restarted

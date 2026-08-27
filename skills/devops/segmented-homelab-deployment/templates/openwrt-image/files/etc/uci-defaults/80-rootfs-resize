@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+
+MARKER_NEXT="/etc/.rootfs-resize-required"
+MARKER_DONE="/etc/.rootfs-resized"
+
+[ -f "$MARKER_DONE" ] && exit 0
+[ -f "$MARKER_NEXT" ] || exit 0
+
+ROOT_PART="$(findmnt -n -o SOURCE /)"
+
+resize2fs "$ROOT_PART"
+
+sync
+rm -f "$MARKER_NEXT"
+touch "$MARKER_DONE"
+
+exit 0
