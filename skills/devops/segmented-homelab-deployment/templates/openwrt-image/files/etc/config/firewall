@@ -1,0 +1,124 @@
+config defaults
+	option input 'DROP'
+	option output 'ACCEPT'
+	option forward 'DROP'
+	option synflood_protect '1'
+	option flow_offloading '1'
+	option flow_offloading_hw '1'
+
+config zone
+	option name 'mgmt'
+	list network 'mgmt'
+	option input 'ACCEPT'
+	option output 'ACCEPT'
+	option forward 'DROP'
+
+config zone
+	option name 'wan'
+	list network 'wan'
+	option input 'DROP'
+	option output 'ACCEPT'
+	option forward 'DROP'
+	option masq '1'
+	option mtu_fix '1'
+
+config zone
+	option name 'lan'
+	list network 'lan'
+	option input 'ACCEPT'
+	option output 'ACCEPT'
+	option forward 'DROP'
+
+config zone
+	option name 'dmz'
+	list network 'dmz'
+	option input 'DROP'
+	option output 'ACCEPT'
+	option forward 'DROP'
+
+config zone
+	option name 'iot'
+	list network 'iot'
+	option input 'DROP'
+	option output 'ACCEPT'
+	option forward 'DROP'
+
+config forwarding
+	option src 'lan'
+	option dest 'wan'
+
+config forwarding
+	option src 'lan'
+	option dest 'dmz'
+
+config forwarding
+	option src 'dmz'
+	option dest 'wan'
+
+config forwarding
+	option src 'iot'
+	option dest 'wan'
+
+config forwarding
+	option src 'mgmt'
+	option dest 'wan'
+
+config rule
+	option name 'Allow-ICMP-MGMT'
+	option src 'mgmt'
+	option proto 'icmp'
+	option family 'ipv4'
+	option target 'ACCEPT'
+
+config rule
+	option name 'Allow-SSH-MGMT'
+	option src 'mgmt'
+	option dest_port '22'
+	option proto 'tcp'
+	option target 'ACCEPT'
+
+config rule
+	option name 'Allow-HTTPS-LuCI-MGMT'
+	option src 'mgmt'
+	option dest_port '443'
+	option proto 'tcp'
+	option target 'ACCEPT'
+
+config rule
+	option name 'Allow-DNS-LAN'
+	option src 'lan'
+	option dest_port '53'
+	option proto 'tcp udp'
+	option target 'ACCEPT'
+
+config rule
+	option name 'Allow-DNS-DMZ'
+	option src 'dmz'
+	option dest_port '53'
+	option proto 'tcp udp'
+	option target 'ACCEPT'
+
+config rule
+	option name 'Allow-DNS-IOT'
+	option src 'iot'
+	option dest_port '53'
+	option proto 'tcp udp'
+	option target 'ACCEPT'
+
+config rule
+	option name 'Block-IOT-to-MGMT'
+	option src 'iot'
+	option dest 'mgmt'
+	option proto 'all'
+	option target 'DROP'
+
+config rule
+	option name 'Block-IOT-to-LAN'
+	option src 'iot'
+	option dest 'lan'
+	option proto 'all'
+	option target 'DROP'
+
+config include 'crowdsec_bouncer'
+	option type 'nftables'
+	option path '/etc/nftables.d/40-crowdsec-firewall-bouncer.nft'

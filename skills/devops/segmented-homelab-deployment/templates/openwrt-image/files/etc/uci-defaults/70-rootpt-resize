@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+
+MARKER_DONE="/etc/.rootpt-resized"
+MARKER_NEXT="/etc/.rootfs-resize-required"
+
+[ -f "$MARKER_DONE" ] && exit 0
+
+ROOT_PART="$(findmnt -n -o SOURCE /)"
+DISK_DEV="/dev/$(lsblk -ndo PKNAME "$ROOT_PART")"
+PART_NUM="$(echo "$ROOT_PART" | sed -E 's#^.*[^0-9]([0-9]+)$#\1#')"
+
+if [ -z "$DISK_DEV" ] || [ -z "$PART_NUM" ]; then
+	echo "Unable to determine root block device" >&2
+	exit 1
+fi
+
+parted -s "$DISK_DEV" "resizepart $PART_NUM 100%"
+partprobe "$DISK_DEV" || true
+
+sync
+
+touch "$MARKER_DONE"
+touch "$MARKER_NEXT"
+
+exit 0
