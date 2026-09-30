@@ -17,7 +17,7 @@ import tempfile
 import zipfile
 from pathlib import Path
 
-import defusedxml.minidom
+from lxml import etree
 
 from validators import DOCXSchemaValidator, PPTXSchemaValidator, RedliningValidator
 
@@ -66,6 +66,9 @@ def pack(
     return None, f"Successfully packed {input_dir} to {output_file}"
 
 
+_xml_cache = {}
+
+
 def _run_validation(
     unpacked_dir: Path,
     original_file: Path,
@@ -107,22 +110,28 @@ def _run_validation(
 
 def _condense_xml(xml_file: Path) -> None:
     try:
-        with open(xml_file, encoding="utf-8") as f:
-            dom = defusedxml.minidom.parse(f)
+        file_key = str(xml_file.absolute())
+        if file_key in _xml_cache:
+            tree = _xml_cache[file_key]
+        else:
+            parser = etree.XMLParser(remove_blank_text=False, remove_comments=True)
+            tree = etree.parse(str(xml_file), parser)
+            _xml_cache[file_key] = tree
 
-        for element in dom.getElementsByTagName("*"):
-            if element.tagName.endswith(":t"):
-                continue
+        for element in tree.iter():
+            is_t = isinstance(element.tag, str) and (
+                element.tag.endswith("}t") or element.tag == "t" or element.tag.endswith(":t")
+            )
 
-            for child in list(element.childNodes):
-                if (
-                    child.nodeType == child.TEXT_NODE
-                    and child.nodeValue
-                    and child.nodeValue.strip() == ""
-                ) or child.nodeType == child.COMMENT_NODE:
-                    element.removeChild(child)
+            if not is_t:
+                if element.text and element.text.strip() == "":
+                    element.text = None
 
-        xml_file.write_bytes(dom.toxml(encoding="UTF-8"))
+                for child in element:
+                    if child.tail and child.tail.strip() == "":
+                        child.tail = None
+
+        xml_file.write_bytes(etree.tostring(tree, encoding="UTF-8", xml_declaration=True))
     except Exception as e:
         print(f"ERROR: Failed to parse {xml_file.name}: {e}", file=sys.stderr)
         raise
