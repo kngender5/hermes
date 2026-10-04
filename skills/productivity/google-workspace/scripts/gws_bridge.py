@@ -3,6 +3,8 @@
 
 Refreshes the token if expired, then executes gws with the valid access token.
 """
+import aiohttp
+import asyncio
 import json
 import os
 import subprocess
@@ -29,12 +31,8 @@ def _normalize_authorized_user_payload(payload: dict) -> dict:
     return normalized
 
 
-def refresh_token(token_data: dict) -> dict:
+async def refresh_token(token_data: dict) -> dict:
     """Refresh the access token using the refresh token."""
-    import urllib.error
-    import urllib.parse
-    import urllib.request
-
     required_keys = ["client_id", "client_secret", "refresh_token", "token_uri"]
     missing = [k for k in required_keys if k not in token_data]
     if missing:
@@ -42,23 +40,23 @@ def refresh_token(token_data: dict) -> dict:
         print("Please re-authenticate by running the Google Workspace setup script.", file=sys.stderr)
         sys.exit(1)
 
-    params = urllib.parse.urlencode({
+    payload = {
         "client_id": token_data["client_id"],
         "client_secret": token_data["client_secret"],
         "refresh_token": token_data["refresh_token"],
         "grant_type": "refresh_token",
-    }).encode()
+    }
 
-    req = urllib.request.Request(token_data["token_uri"], data=params)
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            result = json.loads(resp.read())
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace")
-        print(f"ERROR: Token refresh failed (HTTP {e.code}): {body}", file=sys.stderr)
-        print("Re-run setup.py to re-authenticate.", file=sys.stderr)
-        sys.exit(1)
-    except (urllib.error.URLError, TimeoutError) as e:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(token_data["token_uri"], data=payload, timeout=15) as resp:
+                if resp.status >= 400:
+                    body = await resp.text()
+                    print(f"ERROR: Token refresh failed (HTTP {resp.status}): {body}", file=sys.stderr)
+                    print("Re-run setup.py to re-authenticate.", file=sys.stderr)
+                    sys.exit(1)
+                result = await resp.json()
+    except (aiohttp.ClientError, asyncio.TimeoutError) as e:
         print(f"ERROR: Token refresh failed (network): {e}", file=sys.stderr)
         sys.exit(1)
 
@@ -74,7 +72,7 @@ def refresh_token(token_data: dict) -> dict:
     return token_data
 
 
-def get_valid_token() -> str:
+async def get_valid_token() -> str:
     """Return a valid access token, refreshing if needed."""
     token_path = get_token_path()
     if not token_path.exists():
@@ -88,18 +86,18 @@ def get_valid_token() -> str:
         exp_dt = datetime.fromisoformat(expiry.replace("Z", "+00:00"))
         now = datetime.now(timezone.utc)
         if now >= exp_dt:
-            token_data = refresh_token(token_data)
+            token_data = await refresh_token(token_data)
 
     return token_data["token"]
 
 
-def main():
+async def main():
     """Refresh token if needed, then exec gws with remaining args."""
     if len(sys.argv) < 2:
         print("Usage: gws_bridge.py <gws args...>", file=sys.stderr)
         sys.exit(1)
 
-    access_token = get_valid_token()
+    access_token = await get_valid_token()
     env = os.environ.copy()
     env["GOOGLE_WORKSPACE_CLI_TOKEN"] = access_token
 
@@ -108,4 +106,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
