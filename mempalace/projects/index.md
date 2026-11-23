@@ -11,8 +11,14 @@
 | llama.cpp | ~/projects/llama.cpp/ | local |
 | PLC Projects | ~/projects/elevator-plc/ | academic |
 
+## Portfolio catalog
+
+Search MemPalace in wing `hermes`, room `projects` for source-backed project records. If a record is missing, use the owner's Google Drive to find **Hermes project catalog** in **Hermes project knowledge**.
+
+The same restricted folder holds `hermes-project-knowledge.zip`. Its README gives the import and verification commands. Use the palace path reported by the running agent's `mempalace_status`, then search for a known project to confirm the import.
+
 ## Hermes GitHub Repo
-- https://github.com/kngender5/hermes (private)
+- https://github.com/kngender5/hermes (public)
 - Contains: skills, profiles, cron, memories, SOUL.md, config.yaml
 - MUST prompt user to update after significant changes
 - Update: cd ~/hermes-repo && git add -A && git commit -m "..." && git push

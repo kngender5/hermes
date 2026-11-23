@@ -1,4 +1,4 @@
-# Hermes Agent — Private Repository
+# Hermes Agent
 
 > Configuration, skills, profiles, and automation for the Hermes AI Agent ecosystem.
 

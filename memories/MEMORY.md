@@ -22,3 +22,5 @@ This file is a fallback/summary. Always query MemPalace first for detailed info.
 4. WHEN FACTS CHANGE: call `mempalace_kg_invalidate` on old fact, `mempalace_kg_add` for new one
 §
 2026-06-05: MEMORY.md and USER.md updated to reference MemPalace as primary memory. Fallback files only.
+§
+For project records, search MemPalace wing `hermes`, room `projects`. The owner's Drive folder **Hermes project knowledge** holds **Hermes project catalog**, its dated sources and the native import package.
