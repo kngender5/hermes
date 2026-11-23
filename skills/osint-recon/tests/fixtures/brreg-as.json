@@ -1,0 +1,12 @@
+{
+  "source": "brreg",
+  "http_status": 200,
+  "body": {
+    "organisasjonsnummer": "123456785",
+    "navn": "Ærø Åshøg AS",
+    "organisasjonsform": {"kode": "AS", "beskrivelse": "Aksjeselskap"},
+    "konkurs": false,
+    "epostadresse": "omit@example.invalid",
+    "forretningsadresse": {"adresse": ["Synthetic address"]}
+  }
+}
