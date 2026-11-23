@@ -1,92 +1,17 @@
-# Graphviz DOT — OSINT Relationship Graphs
+# Evidence relationships with Graphviz
 
-## Color Schema
+Build an optional local DOT diagram from reviewed organisation and public registry observations. Use namespaced identifiers as node IDs and escaped, human-readable labels. Treat source text as plain text, and avoid images, hyperlinks and HTML labels in DOT output.
 
-Use this standardized color scheme for all OSINT relationship graphs:
+Use a solid edge for a directly sourced relationship. Use a dashed edge labelled `unresolved` for a comparison awaiting review. A shared name or domain string does not establish common ownership. Display a source publisher and date or an evidence reference alongside each asserted edge. Leave differing dates and contradictory statements visible.
 
-```
-digraph G {
-    // Color scheme
-    node [style="filled,rounded", fontname="Helvetica", fontsize=11];
-    
-    // Red — critical vulnerabilities / exposed data
-    "leaked_email@example.com" [fillcolor="#ff6b6b", fontcolor="white", shape=box];
-    "192.168.1.1" [fillcolor="#ff6b6b", fontcolor="white", shape=octagon];
-    "/home/user/secret_key" [fillcolor="#ff6b6b", fontcolor="white", shape=note];
-    
-    // Yellow — provisional / unconfirmed profiles
-    "@suspicious_handle" [fillcolor="#ffd93d", fontcolor="black", shape=ellipse];
-    "possible_alias" [fillcolor="#ffd93d", fontcolor="black", shape=ellipse];
-    
-    // Green — confirmed / validated identifiers
-    "@confirmed_handle" [fillcolor="#6bcb77", fontcolor="white", shape=ellipse];
-    "John Doe" [fillcolor="#6bcb77", fontcolor="white", shape=box];
-    "user@company.com" [fillcolor="#6bcb77", fontcolor="white", shape=box];
-    
-    // Blue — third-party / CDN / infrastructure
-    "142.250.80.14" [fillcolor="#4d96ff", fontcolor="white", shape=octagon];
-    "cloudflare.com" [fillcolor="#4d96ff", fontcolor="white", shape=hexagon];
-    "+4712345678" [fillcolor="#4d96ff", fontcolor="white", shape=diamond];
-    
-    // Edges with source labels
-    "@confirmed_handle" -> "user@company.com" [label="via holehe", fontsize=9];
-    "user@company.com" -> "example.com" [label="MX record", fontsize=9, style=dashed];
-    "@confirmed_handle" -> "+4712345678" [label="via ignorant", fontsize=9];
-    "example.com" -> "142.250.80.14" [label="A record", fontsize=9];
-    
-    // Graph metadata
-    labelloc="t";
-    label="OSINT Dossier: [TARGET_NAME]\nGenerated: [DATE]";
-    rankdir="LR";
-    splines="ortho";
+Example with invented node IDs:
+
+```dot
+digraph Evidence {
+  "no_organisation:example" [label="Example organisation"];
+  "no_domain:example" [label="Example domain"];
+  "no_organisation:example" -> "no_domain:example" [style=dashed, label="unresolved"];
 }
 ```
 
-## Node Shapes
-
-| Shape | Meaning |
-|-------|---------|
-| `ellipse` | Username / handle |
-| `box` | Name, email, text identifier |
-| `octagon` | IP address, server |
-| `diamond` | Phone number |
-| `hexagon` | Domain, CDN, infrastructure |
-| `note` | System path, file, exposure |
-| `folder` | Directory, database |
-| `component` | Service, API endpoint |
-
-## Edge Styles
-
-| Style | Meaning |
-|-------|---------|
-| `solid` | Confirmed / validated link |
-| `dashed` | Inferred / probable link |
-| `dotted` | Historical / archived link |
-| `bold` | Direct / primary connection |
-
-## Export Commands
-
-```bash
-# Install graphviz if needed
-sudo apt-get install -y graphviz
-
-# PNG (for sharing)
-dot -Tpng ./artifacts/TARGET.dot -o ./artifacts/TARGET.png
-
-# SVG (for web / scaling)
-dot -Tsvg ./artifacts/TARGET.dot -o ./artifacts/TARGET.svg
-
-# PDF (for reports)
-dot -Tpdf ./artifacts/TARGET.dot -o ./artifacts/TARGET.pdf
-
-# DOT with embedded image (for tools that support it)
-dot -Tsvg -o output.svg input.dot && inkscape output.svg --export-pdf=output.pdf
-```
-
-## Full Workflow
-
-1. Collect all indicators from previous phases
-2. Assign colors by confidence (red=critical, yellow=unconfirmed, green=confirmed, blue=infra)
-3. Write DOT file to `./artifacts/TARGET.dot`
-4. Render to PNG + SVG
-5. Include both in final dossier report
+A locally installed Graphviz can render the DOT file with `dot -Tsvg evidence.dot -o evidence.svg`. Keep DOT and rendered outputs in the same access-controlled workspace as the evidence.
