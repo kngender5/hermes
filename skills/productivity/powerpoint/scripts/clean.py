@@ -103,14 +103,9 @@ def remove_trash_directory(unpacked_dir: Path) -> list[str]:
     return removed
 
 
-def get_slide_referenced_files(unpacked_dir: Path) -> set:
+def _extract_references_from_rels(rels_files, unpacked_dir: Path) -> set:
     referenced = set()
-    slides_rels_dir = unpacked_dir / "ppt" / "slides" / "_rels"
-
-    if not slides_rels_dir.exists():
-        return referenced
-
-    for rels_file in slides_rels_dir.glob("*.rels"):
+    for rels_file in rels_files:
         dom = defusedxml.minidom.parse(str(rels_file))
         for rel in dom.getElementsByTagName("Relationship"):
             target = rel.getAttribute("Target")
@@ -121,8 +116,16 @@ def get_slide_referenced_files(unpacked_dir: Path) -> set:
                 referenced.add(target_path.relative_to(unpacked_dir.resolve()))
             except ValueError:
                 pass
-
     return referenced
+
+
+def get_slide_referenced_files(unpacked_dir: Path) -> set:
+    slides_rels_dir = unpacked_dir / "ppt" / "slides" / "_rels"
+
+    if not slides_rels_dir.exists():
+        return set()
+
+    return _extract_references_from_rels(slides_rels_dir.glob("*.rels"), unpacked_dir)
 
 
 def remove_orphaned_rels_files(unpacked_dir: Path) -> list[str]:
@@ -151,21 +154,7 @@ def remove_orphaned_rels_files(unpacked_dir: Path) -> list[str]:
 
 
 def get_referenced_files(unpacked_dir: Path) -> set:
-    referenced = set()
-
-    for rels_file in unpacked_dir.rglob("*.rels"):
-        dom = defusedxml.minidom.parse(str(rels_file))
-        for rel in dom.getElementsByTagName("Relationship"):
-            target = rel.getAttribute("Target")
-            if not target:
-                continue
-            target_path = (rels_file.parent.parent / target).resolve()
-            try:
-                referenced.add(target_path.relative_to(unpacked_dir.resolve()))
-            except ValueError:
-                pass
-
-    return referenced
+    return _extract_references_from_rels(unpacked_dir.rglob("*.rels"), unpacked_dir)
 
 
 def remove_orphaned_files(unpacked_dir: Path, referenced: set) -> list[str]:
