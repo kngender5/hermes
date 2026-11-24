@@ -71,7 +71,7 @@ def _normalize_authorized_user_payload(payload: dict) -> dict:
 def _load_token_payload(path: Path = TOKEN_PATH) -> dict:
     try:
         return json.loads(path.read_text())
-    except Exception:
+    except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
 
@@ -99,8 +99,10 @@ def install_deps():
         import google_auth_oauthlib  # noqa: F401
         print("Dependencies already installed.")
         return True
-    except ImportError:
+    except ModuleNotFoundError:
         pass
+    except ImportError:
+        return False
 
     print("Installing Google API dependencies...")
     try:
@@ -125,9 +127,11 @@ def _ensure_deps():
     try:
         import googleapiclient  # noqa: F401
         import google_auth_oauthlib  # noqa: F401
-    except ImportError:
+    except ModuleNotFoundError:
         if not install_deps():
             sys.exit(1)
+    except ImportError:
+        sys.exit(1)
 
 
 def check_auth_live():
