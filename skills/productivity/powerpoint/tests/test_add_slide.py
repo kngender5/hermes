@@ -1,6 +1,7 @@
 import pytest
 import sys
 import shutil
+from unittest.mock import patch
 from pathlib import Path
 import re
 
@@ -126,13 +127,28 @@ def test_create_slide_from_layout_missing(tmp_path, capsys):
     assert "Error:" in err
     assert "slideLayout99.xml not found" in err
 
-def test_duplicate_slide(tmp_path, capsys):
+@patch("add_slide.shutil.copy2")
+def test_duplicate_slide(mock_copy2, tmp_path, capsys):
     unpacked = setup_mock_unpacked_dir(tmp_path)
+
+    slides_dir = unpacked / "ppt" / "slides"
+    rels_dir = slides_dir / "_rels"
+
+    # We need to simulate copy2 actually creating the destination files so that subsequent code
+    # (like reading dest_rels) works correctly.
+    def mock_copy2_side_effect(src, dst):
+        shutil.copyfile(src, dst)
+
+    mock_copy2.side_effect = mock_copy2_side_effect
 
     add_slide.duplicate_slide(unpacked, "slide1.xml")
 
+    # Check that copy2 was called as our external dependency
+    assert mock_copy2.call_count == 2
+    mock_copy2.assert_any_call(slides_dir / "slide1.xml", slides_dir / "slide2.xml")
+    mock_copy2.assert_any_call(rels_dir / "slide1.xml.rels", rels_dir / "slide2.xml.rels")
+
     # Check outputs
-    slides_dir = unpacked / "ppt" / "slides"
     assert (slides_dir / "slide2.xml").exists()
     assert (slides_dir / "slide2.xml").read_text(encoding="utf-8") == "<slide/>"
 
